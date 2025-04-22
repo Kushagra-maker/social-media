@@ -3,6 +3,9 @@ const User=require("../models/User")
 const Post=require("../models/Post")
 const Comment=require("../models/Comment")
 const Story=require("../models/Story")
+const path = require("path");
+const fs = require("fs"); // If you are deleting old images
+
 
 const getUserController=async(req,res,next)=>{
     const {userId}=req.params
@@ -267,22 +270,32 @@ const generateFileUrl=(filename)=>{
     return process.env.URL+`/uploads/${filename}`
 }
 
-const uploadProfilePictureController=async(req,res,next)=>{
-    const {userId}=req.params
-    const {filename}=req.file
-    try{
-        const user=await User.findByIdAndUpdate(userId,{profilePicture:generateFileUrl(filename)},{new:true})
-        if(!user){
-            throw new CustomError("User not found!",404)
+const uploadProfilePictureController = async (req, res, next) => {
+    const { userId } = req.params;
+    const { filename } = req.file;
+
+    try {
+        // Find user in the database
+        const user = await User.findById(userId);
+        if (!user) throw new CustomError("User not found!", 404);
+
+        // If user has an old profile picture, delete it
+        if (user.profilePicture) {
+            const oldFilePath = path.join(__dirname, "uploads", path.basename(user.profilePicture));
+            if (fs.existsSync(oldFilePath)) {
+                fs.unlinkSync(oldFilePath); // Delete the old file
+            }
         }
 
-        res.status(200).json({message:"Profile picture updated successfully!",user})
+        // Update user profile with the new picture
+        user.profilePicture = generateFileUrl(filename);
+        await user.save(); // Ensure the updated user is saved in MongoDB
 
+        res.status(200).json({ message: "Profile picture updated successfully!", user });
+    } catch (error) {
+        next(error);
     }
-    catch(error){
-        next(error)
-    }
-}
+};
 
 const uploadCoverPictureController=async(req,res,next)=>{
     const {userId}=req.params

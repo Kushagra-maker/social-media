@@ -33,7 +33,7 @@ app.use("/api/message",verifyToken,messageRoute)
 
 app.use(errorHandler)
 
-app.listen(5000,()=>{
+app.listen(5001,()=>{
     connectDB()
     console.log("app is running")
 })
